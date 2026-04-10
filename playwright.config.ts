@@ -12,7 +12,7 @@ function getBaseUrl() {
   const environment = process.env.ENV;
   if (environment == 'prod') return 'https://automationintesting.online/';
   else if (environment == 'docker') return 'http://localhost';
-  else if (environment == 'kube') return 'http://kube.local';
+  else if (environment == 'kube') return 'http://localhost:8080';
   else return 'https://automationintesting.online/';
 }
 
@@ -30,7 +30,63 @@ export default defineConfig({
   /* Opt out of parallel tests on CI. */
   workers: process.env.CI ? 1 : undefined,
   /* Reporter to use. See https://playwright.dev/docs/test-reporters */
-  reporter: 'html',
+  reporter: process.env.CI
+  ? [
+      ['list'],
+      ['line'],
+      ['html', 
+        { 
+          open: 'never',
+          outputFolder: './reports/playwright-report'
+        }
+      ],
+      [
+        'monocart-reporter',
+        {
+          name: 'Playwright E2E Project',
+          outputFile: './reports/monocart-report/index.html'
+        }
+      ],
+      ['blob', 
+        { 
+          outputDir: './reports/blob-report', 
+          fileName: `report-${process.env.BLOB_NAME}.zip` 
+        }
+      ],
+      [
+        'allure-playwright',
+        {
+          detail: true,
+          resultsDir: './reports/allure-results',
+          suiteTitle: false
+        }
+      ]
+    ]
+  : [
+      ['list'],
+      ['line'],
+      ['html', 
+        { 
+          open: 'on-failure',
+          outputFolder: './reports/playwright-report'
+        }
+      ],
+      [
+        'monocart-reporter',
+        {
+          name: 'Playwright E2E Project',
+          outputFile: './reports/monocart-report/index.html'
+        }
+      ],
+      [
+        'allure-playwright',
+        {
+          detail: true,
+          resultsDir: './reports/allure-results',
+          suiteTitle: false
+        }
+      ]
+    ],
   /* Shared settings for all the projects below. See https://playwright.dev/docs/api/class-testoptions. */
   use: {
     /* Base URL to use in actions like `await page.goto('')`. */

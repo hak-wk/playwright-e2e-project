@@ -1,12 +1,8 @@
 # Playwright
 /test-results/
-/playwright-monocart-report/
-/playwright-report/
 /playwright/.cache/
-/playwright-blob-report/
-/playwright-all-blob-reports/
-/playwright-allure-results/
-/playwright-allure-report/
+# Generated report files
+/reports/
 # Compiled output
 /dist
 /node_modules
