@@ -11,6 +11,7 @@
     "@playwright/test": "^1.56.1",
     "@types/node": "^24.10.1",
     "allure-playwright": "^3.4.3",
-    "monocart-reporter": "^2.9.23"
+    "monocart-reporter": "^2.10.1",
+    "typescript": "^6.0.3"
   }
 }
