@@ -1,0 +1,156 @@
+name: Check - Changed Tests
+
+on:
+  pull_request:
+    types:
+      - opened
+      - reopened
+      - synchronize
+      - labeled
+
+jobs:
+  install:
+    name: Install
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v6
+        with:
+          # Force a non-shallow checkout, so that we can reference $GITHUB_BASE_REF
+          # (needed for the --only-changed option to work)
+          fetch-depth: 0
+
+      - name: Setup Node
+        uses: actions/setup-node@v6
+        with:
+          node-version: 20
+
+      - name: Cache Node Modules
+        id: cache-node-modules
+        uses: actions/cache@v4
+        with:
+          path: node_modules
+          key: modules-${{ hashFiles('package-lock.json') }}
+
+      - name: Cache Playwright Binaries
+        id: cache-playwright
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-${{ hashFiles('package-lock.json') }}
+
+      - name: Install Dependencies
+        if: steps.cache-node-modules.outputs.cache-hit != 'true'
+        run: npm ci
+
+      - name: Install Playwright Browsers
+        if: steps.cache-playwright.outputs.cache-hit != 'true'
+        run: npx playwright install --with-deps
+
+      - name: Run Type Checks
+        run: npx tsc --noEmit
+
+  test:
+    name: Changed Tests
+    runs-on: ubuntu-latest
+    needs: [install]
+    timeout-minutes: 60
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      - name: Setup Node
+        uses: actions/setup-node@v6
+        with:
+          node-version: 20
+
+      - name: Restore Node Modules Cache
+        id: cache-node-modules
+        uses: actions/cache@v4
+        with:
+          path: node_modules
+          key: modules-${{ hashFiles('package-lock.json') }}
+
+      - name: Restore Playwright Binaries Cache
+        id: cache-playwright
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-${{ hashFiles('package-lock.json') }}
+
+      - name: Install Dependencies
+        if: steps.cache-node-modules.outputs.cache-hit != 'true'
+        run: npm ci
+
+      # Playwright caches the browser binaries, but not their dependencies.
+      # Those extra browser dependencies must be installed separately when the cached browsers are restored.
+      - name: Install Playwright System Dependencies
+        run: npx playwright install-deps
+
+      - name: Start Restful Booker Platform
+        run: docker compose -f docker-compose-restful-booker.yml up -d
+
+      - name: Wait for Restful Booker Platform
+        run: |
+          echo "Waiting for services to be ready..."
+          for i in $(seq 1 30); do
+            if curl -sf http://localhost/booking/actuator/health > /dev/null; then
+              echo "Services are ready."
+              exit 0
+            fi
+            echo "Attempt $i/30 — retrying in 5s..."
+            sleep 5
+          done
+          echo "Services did not become ready in time."
+          docker compose -f docker-compose-restful-booker.yml logs
+          exit 1
+
+      - name: Run Playwright Tests
+        run: npx playwright test --only-changed=origin/$GITHUB_BASE_REF
+        env:
+          CI: true
+          ENV: docker
+          BLOB_NAME: changed-${{ github.run_id }}
+
+      - name: Upload Playwright HTML Report
+        uses: actions/upload-artifact@v6
+        if: always()
+        with:
+          name: playwright-report-${{ github.run_id }}
+          path: reports/playwright-report/
+          if-no-files-found: ignore
+          retention-days: 1
+
+      - name: Upload Monocart Report
+        uses: actions/upload-artifact@v6
+        if: always()
+        with:
+          name: monocart-report-${{ github.run_id }}
+          path: reports/monocart-report/
+          if-no-files-found: ignore
+          retention-days: 1
+
+      - name: Upload Allure Results
+        uses: actions/upload-artifact@v6
+        if: always()
+        with:
+          name: allure-results-${{ github.run_id }}
+          path: reports/allure-results/
+          if-no-files-found: ignore
+          retention-days: 1
+
+      - name: Upload Blob Report
+        uses: actions/upload-artifact@v6
+        if: always()
+        with:
+          name: blob-report-${{ github.run_id }}
+          path: reports/blob-report/
+          if-no-files-found: ignore
+          retention-days: 1
+
+      - name: Stop Restful Booker Platform
+        if: always()
+        run: docker compose -f docker-compose-restful-booker.yml down
