@@ -1,0 +1,17 @@
+name: Check - Regression Tests
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: '0 0 * * 0' # Every Sunday at midnight
+
+jobs:
+  run:
+    uses: ./.github/workflows/playwright-base.yml
+    with:
+      blob-name: regression
+      retention-days: 6
+      html-report: always
+      monocart-report: always
+      allure-report: always
+      blob-report: always

@@ -1,4 +1,4 @@
-name: Check - Changed Tests
+name: Check - Sanity Tests
 
 on:
   pull_request:
@@ -12,10 +12,9 @@ jobs:
   run:
     uses: ./.github/workflows/playwright-base.yml
     with:
-      test-command: --only-changed=origin/${{ github.base_ref }}
-      blob-name: changed
+      test-command: --grep @sanity
+      blob-name: sanity
       retention-days: 1
-      run-type-check: true
       fetch-depth: 0
       html-report: on-failure
       monocart-report: never
