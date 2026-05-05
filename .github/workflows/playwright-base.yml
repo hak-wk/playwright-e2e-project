@@ -1,0 +1,203 @@
+name: Playwright Base (Reusable)
+
+on:
+  workflow_call:
+    inputs:
+      test-command:
+        description: "Playwright CLI arguments (e.g. '--grep @sanity'). Leave empty to run all tests."
+        type: string
+        required: false
+        default: ""
+      blob-name:
+        description: "Unique prefix for artifact names (e.g. 'sanity', 'regression')"
+        type: string
+        required: true
+      retention-days:
+        description: "Number of days to retain uploaded report artifacts"
+        type: number
+        required: true
+      run-type-check:
+        description: "Whether to run TypeScript type checking in the install job"
+        type: boolean
+        required: false
+        default: false
+      fetch-depth:
+        description: "Git fetch depth (0 for full history, required by --only-changed)"
+        type: number
+        required: false
+        default: 1
+
+      # ── Report upload controls ──────────────────────────────────────────────
+      # Each report can be set to: 'always' | 'on-failure' | 'never'
+      html-report:
+        description: "Upload HTML report: 'always', 'on-failure', or 'never'"
+        type: string
+        required: false
+        default: "never"
+      monocart-report:
+        description: "Upload Monocart report: 'always', 'on-failure', or 'never'"
+        type: string
+        required: false
+        default: "never"
+      allure-report:
+        description: "Upload Allure results: 'always', 'on-failure', or 'never'"
+        type: string
+        required: false
+        default: "never"
+      blob-report:
+        description: "Upload Blob report: 'always', 'on-failure', or 'never'"
+        type: string
+        required: false
+        default: "never"
+
+jobs:
+  install:
+    name: Install
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: ${{ inputs.fetch-depth }}
+
+      - name: Setup Node
+        uses: actions/setup-node@v6
+        with:
+          node-version: 20
+
+      - name: Cache Node Modules
+        id: cache-node-modules
+        uses: actions/cache@v5
+        with:
+          path: node_modules
+          key: modules-${{ hashFiles('package-lock.json') }}
+
+      - name: Cache Playwright Binaries
+        id: cache-playwright
+        uses: actions/cache@v5
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-${{ hashFiles('package-lock.json') }}
+
+      - name: Install Dependencies
+        if: steps.cache-node-modules.outputs.cache-hit != 'true'
+        run: npm ci
+
+      - name: Install Playwright Browsers
+        if: steps.cache-playwright.outputs.cache-hit != 'true'
+        run: npx playwright install --with-deps
+
+      - name: Run Type Checks
+        if: inputs.run-type-check
+        run: npx tsc -p tsconfig.json --noEmit
+
+  test:
+    name: ${{ inputs.blob-name }} Tests
+    runs-on: ubuntu-latest
+    needs: [install]
+    timeout-minutes: 60
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: ${{ inputs.fetch-depth }}
+
+      - name: Setup Node
+        uses: actions/setup-node@v6
+        with:
+          node-version: 20
+
+      - name: Restore Node Modules Cache
+        id: cache-node-modules
+        uses: actions/cache@v5
+        with:
+          path: node_modules
+          key: modules-${{ hashFiles('package-lock.json') }}
+
+      - name: Restore Playwright Binaries Cache
+        id: cache-playwright
+        uses: actions/cache@v5
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-${{ hashFiles('package-lock.json') }}
+
+      - name: Install Dependencies
+        if: steps.cache-node-modules.outputs.cache-hit != 'true'
+        run: npm ci
+
+      # Playwright caches the browser binaries, but not their dependencies.
+      # Those extra browser dependencies must be installed separately when the cached browsers are restored.
+      - name: Install Playwright System Dependencies
+        run: npx playwright install-deps
+
+      - name: Start Restful Booker Platform
+        run: docker compose -f docker-compose-restful-booker.yml up -d
+
+      - name: Wait for Restful Booker Platform
+        run: |
+          echo "Waiting for all services to be ready..."
+          for i in $(seq 1 30); do
+            if curl -sf http://localhost/booking/actuator/health > /dev/null && \
+               curl -sf http://localhost/room/actuator/health > /dev/null && \
+               curl -sf http://localhost/branding/actuator/health > /dev/null && \
+               curl -sf http://localhost/auth/actuator/health > /dev/null && \
+               curl -sf http://localhost/report/actuator/health > /dev/null && \
+               curl -sf http://localhost/message/actuator/health > /dev/null && \
+               curl -sf http://localhost > /dev/null; then
+              echo "All services are ready."
+              exit 0
+            fi
+            echo "Attempt $i/30 — retrying in 5s..."
+            sleep 5
+          done
+          echo "Services did not become ready in time."
+          docker compose -f docker-compose-restful-booker.yml logs
+          exit 1
+
+      - name: Run Playwright Tests
+        run: npx playwright test ${{ inputs.test-command }}
+        env:
+          CI: true
+          ENV: docker
+          BLOB_NAME: ${{ inputs.blob-name }}-${{ github.run_id }}
+
+      - name: Upload Playwright HTML Report
+        uses: actions/upload-artifact@v6
+        if: ${{ inputs.html-report == 'always' || (inputs.html-report == 'on-failure' && failure()) }}
+        with:
+          name: playwright-report-${{ inputs.blob-name }}-${{ github.run_id }}
+          path: reports/playwright-report/
+          if-no-files-found: ignore
+          retention-days: ${{ inputs.retention-days }}
+
+      - name: Upload Monocart Report
+        uses: actions/upload-artifact@v6
+        if: ${{ inputs.monocart-report == 'always' || (inputs.monocart-report == 'on-failure' && failure()) }}
+        with:
+          name: monocart-report-${{ inputs.blob-name }}-${{ github.run_id }}
+          path: reports/monocart-report/
+          if-no-files-found: ignore
+          retention-days: ${{ inputs.retention-days }}
+
+      - name: Upload Allure Results
+        uses: actions/upload-artifact@v6
+        if: ${{ inputs.allure-report == 'always' || (inputs.allure-report == 'on-failure' && failure()) }}
+        with:
+          name: allure-results-${{ inputs.blob-name }}-${{ github.run_id }}
+          path: reports/allure-results/
+          if-no-files-found: ignore
+          retention-days: ${{ inputs.retention-days }}
+
+      - name: Upload Blob Report
+        uses: actions/upload-artifact@v6
+        if: ${{ inputs.blob-report == 'always' || (inputs.blob-report == 'on-failure' && failure()) }}
+        with:
+          name: blob-report-${{ inputs.blob-name }}-${{ github.run_id }}
+          path: reports/blob-report/
+          if-no-files-found: ignore
+          retention-days: ${{ inputs.retention-days }}
+
+      - name: Stop Restful Booker Platform
+        if: always()
+        run: docker compose -f docker-compose-restful-booker.yml down

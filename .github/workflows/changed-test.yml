@@ -1,0 +1,23 @@
+name: Check - Changed Tests
+
+on:
+  pull_request:
+    types:
+      - opened
+      - reopened
+      - synchronize
+      - labeled
+
+jobs:
+  run:
+    uses: ./.github/workflows/playwright-base.yml
+    with:
+      test-command: --only-changed=origin/${{ github.base_ref }}
+      blob-name: changed
+      retention-days: 1
+      run-type-check: true
+      fetch-depth: 0
+      html-report: on-failure
+      monocart-report: never
+      allure-report: never
+      blob-report: never
