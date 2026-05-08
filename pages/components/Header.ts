@@ -8,7 +8,7 @@ export class Header extends BasePage {
     readonly messagesLink: Locator;
     readonly unreadMessagesNumber: Locator;
     readonly frontPageLink: Locator;
-    readonly logoutLink: Locator;
+    readonly logoutButton: Locator;
 
     constructor(page: Page) {
         super(page);
@@ -19,7 +19,7 @@ export class Header extends BasePage {
         this.messagesLink = page.locator('[href*="#/admin/messages"]');
         this.unreadMessagesNumber = page.locator('a[href*="#/admin/messages"].notification');
         this.frontPageLink = page.getByRole('link', { name: 'Front Page' });
-        this.logoutLink = page.getByRole('link', { name: 'Logout' });
+        this.logoutButton = page.getByRole('button', { name: 'Logout' });
     }
 
     async clickOnRooms() {
@@ -47,6 +47,6 @@ export class Header extends BasePage {
     }
 
     async clickOnLogout() {
-        await this.logoutLink.click();
+        await this.logoutButton.click();
     }
 }

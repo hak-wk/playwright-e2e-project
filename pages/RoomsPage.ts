@@ -23,19 +23,19 @@ export class RoomsPage extends BasePage {
         this.roomTypeSelect = page.locator('#type');
         this.roomAccessibleSelect = page.locator('#accessible');
         this.roomPriceField = page.locator('#roomPrice');
-        this.wifiCheckbox = page.getByLabel('WiFi');
-        this.tvCheckbox = page.getByLabel('TV');
-        this.radioCheckbox = page.getByLabel('Radio');
-        this.refreshmentsCheckbox = page.getByLabel('Refreshments');
-        this.safeCheckbox = page.getByLabel('Safe');
-        this.viewsCheckbox = page.getByLabel('Views');
-        this.createRoomButton = page.getByRole('button', { name: 'Create' });
+        this.wifiCheckbox = page.locator('#wifiCheckbox');
+        this.tvCheckbox = page.locator('#tvCheckbox');
+        this.radioCheckbox = page.locator('#radioCheckbox');
+        this.refreshmentsCheckbox = page.locator('#refreshCheckbox');
+        this.safeCheckbox = page.locator('#safeCheckbox');
+        this.viewsCheckbox = page.locator('#viewsCheckbox');
+        this.createRoomButton = page.locator('#createRoom');
         this.errorMessages = page.locator('.alert.alert-danger');
     }
 
     async goto() {
         await test.step('Go to Rooms Page', async () => {
-            await this.page.goto('/#/admin');
+            await this.page.goto('/admin/rooms');
         });
     }
 
