@@ -26,7 +26,7 @@ export const rooms: [string, RoomType, boolean, number, RoomAmenities][] = [
 export const invalidRooms: [string, RoomType, boolean, number | null, RoomAmenities, string, string][] = [
     ['', RoomType.SINGLE, false, 80, { wifi: false, tv: false, radio: false, refreshments: false, safe: false, views: false }, "Room name is empty", "Room name must be set"],
     ['303', RoomType.TWIN, false, 0, { wifi: true, tv: true, radio: false, refreshments: false, safe: true, views: false }, "Room price is empty", "must be greater than or equal to 1"],
-    ['303', RoomType.TWIN, false, null, { wifi: true, tv: true, radio: false, refreshments: false, safe: true, views: false }, "Room price is 0", "must be greater than or equal to 1"]
+    ['303', RoomType.TWIN, false, null, { wifi: true, tv: true, radio: false, refreshments: false, safe: true, views: false }, "Room price is 0", "Failed to create room"]
 ];
 
 export function getAmenitiesAsList(roomAmenities:RoomAmenities) {

@@ -138,13 +138,13 @@ jobs:
         run: |
           echo "Waiting for all services to be ready..."
           for i in $(seq 1 30); do
-            if curl -sf http://localhost/booking/actuator/health > /dev/null && \
-               curl -sf http://localhost/room/actuator/health > /dev/null && \
-               curl -sf http://localhost/branding/actuator/health > /dev/null && \
-               curl -sf http://localhost/auth/actuator/health > /dev/null && \
-               curl -sf http://localhost/report/actuator/health > /dev/null && \
-               curl -sf http://localhost/message/actuator/health > /dev/null && \
-               curl -sf http://localhost > /dev/null; then
+            if curl -sf http://localhost:3000/booking/actuator/health > /dev/null && \
+               curl -sf http://localhost:3001/room/actuator/health > /dev/null && \
+               curl -sf http://localhost:3002/branding/actuator/health > /dev/null && \
+               curl -sf http://localhost:3004/auth/actuator/health > /dev/null && \
+               curl -sf http://localhost:3005/report/actuator/health > /dev/null && \
+               curl -sf http://localhost:3006/message/actuator/health > /dev/null && \
+               curl -sf http://localhost:80 > /dev/null; then
               echo "All services are ready."
               exit 0
             fi

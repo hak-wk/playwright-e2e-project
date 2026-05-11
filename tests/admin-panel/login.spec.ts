@@ -1,51 +1,71 @@
 import { test, expect } from '@playwright/test';
-import { AdminPage } from "../../pages/AdminPage";
 import { Header } from "../../pages/components/Header";
+import { LoginPage } from "../../pages/LoginPage";
 
 test.describe('Login Tests', () => {
-    let adminPage: AdminPage;
+    let loginPage: LoginPage;
     let header: Header;
-
-    const style = 'style';
-    const redBorder = 'border: 1px solid red;';
     
-    test.beforeEach(async ({ page, baseURL }) => {
-       adminPage = new AdminPage(page);
+    test.beforeEach(async ({ page }) => {
+       loginPage = new LoginPage(page);
        header = new Header(page);
        
-       await adminPage.hideBanner(baseURL);
-       await adminPage.goto();
-    });
-    
-    test('Admin is able to login with correct username and password @sanity @admin', async () => {
-        adminPage.login('admin', 'password');
-        await expect(header.logoutLink, 'Admin logged in!').toBeVisible();
+       await loginPage.goto();
     });
 
-    test('Admin is not able to login with empty username @admin', async () => {
-        adminPage.login('', 'password');
-        await expect(header.logoutLink, 'Admin is not logged in.').toBeHidden();
-        await expect(adminPage.usernameField, 'Username field has red border.').toHaveAttribute(style, redBorder);
-    });
-    
-    test('Admin is not able to login with empty password @admin', async () => {
-        adminPage.login('admin', '');
-        await expect(header.logoutLink, 'Admin is not logged in.').toBeHidden();
-        await expect(adminPage.passwordField, 'Password field has red border.').toHaveAttribute(style, redBorder);
+    // UI / Page Load
+    test.describe("Page Load & UI Elements", () => {
+        test("should load the login page successfully", async ({ page }) => {
+            await expect(page).toHaveURL("/admin");
+            await expect(page).toHaveTitle("Restful-booker-platform demo");
+            await expect(page.getByRole('heading', { name: 'Login' })).toBeVisible();
+            await loginPage.expectNoErrorMsg();
+
+            await expect(loginPage.usernameField).toBeVisible();
+            await expect(loginPage.passwordField).toBeVisible();
+            await expect(loginPage.passwordField).toHaveAttribute("type", "password");
+            await expect(loginPage.loginButton).toBeVisible();
+        });
     });
 
-    test('Admin is not able to login with incorrect password @admin', async () => {
-        adminPage.login('admin', 'wrong_password');
-        await expect(header.logoutLink, 'Admin is not logged in.').toBeHidden();
-        await expect(adminPage.usernameField, 'Username field has red border.').toHaveAttribute(style, redBorder);
-        await expect(adminPage.passwordField, 'Password field has red border.').toHaveAttribute(style, redBorder);
+    // Functional Tests
+    test.describe("Functional Tests", () => {
+        test('Admin is able to login with correct username and password @sanity @admin', async ({ page }) => {
+            loginPage.login('admin', 'password');
+    
+            // should redirect to admin room after successful login
+            await expect(page).toHaveURL("/admin/rooms");
+            // logout button should be visible after successful login
+            await expect(header.logoutButton).toBeVisible();
+        });
+    
+        test('Admin is not able to login with empty username @admin', async () => {
+            loginPage.login('', 'password');
+            await loginPage.expectErrorMsg();
+        });
+        
+        test('Admin is not able to login with empty password @admin', async () => {
+            loginPage.login('admin', '');
+            await loginPage.expectErrorMsg();
+        });
+    
+        test('Admin is not able to login with incorrect password @admin', async () => {
+            loginPage.login('admin', 'wrong_password');
+            await loginPage.expectErrorMsg();
+        });
+        
+        test('Admin is not able to login with incorrect username @admin', async () => {
+            loginPage.login('wrong_admin', 'password');
+            await loginPage.expectErrorMsg();
+        });
     });
     
-    test('Admin is not able to login with incorrect username @admin', async () => {
-        adminPage.login('wrong_admin', 'password');
-        await expect(header.logoutLink, 'Admin is not logged in.').toBeHidden();
-        await expect(adminPage.usernameField, 'Username field has red border.').toHaveAttribute(style, redBorder);
-        await expect(adminPage.passwordField, 'Password field has red border.').toHaveAttribute(style, redBorder);
+    // Security Tests
+    test.describe("Security Tests", () => {
+        test("should redirect unauthenticated users back to login when accessing admin directly", async ({ page }) => {
+            await page.goto("/admin/rooms");
+            await expect(page.getByRole('heading', { name: 'Login' })).toBeVisible();
+        });
     });
 
 });
