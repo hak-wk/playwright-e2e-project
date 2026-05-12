@@ -2,7 +2,8 @@
 /test-results/
 /playwright/.cache/
 # Generated report files
-/reports/
+/reports/*-report
+/reports/*-results
 # Compiled output
 /dist
 /node_modules
