@@ -86,8 +86,8 @@ jobs:
         run: |
           RUN_DATE=$(date -u '+%Y-%m-%d %H:%M UTC')
           RUN_URL="https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}"
-          sed -i "s|params.get('date') || new Date().toUTCString()|'${RUN_DATE}'|g" reports/index.html
-          sed -i "s|params.get('run')  || '#'|'${RUN_URL}'|g" reports/index.html
+          sed -i "s#new Date().toUTCString()#'${RUN_DATE}'#g" reports/index.html
+          sed -i "s#params.get('run')  || '#'#'${RUN_URL}'#g" reports/index.html
  
       # Deploy
       - name: Setup Pages
