@@ -15,3 +15,100 @@ jobs:
       monocart-report: always
       allure-report: always
       blob-report: always
+
+  deploy-reports:
+    name: Deploy Reports to GitHub Pages
+    runs-on: ubuntu-latest
+    needs: [run]
+    if: always()
+    timeout-minutes: 30
+    permissions:
+      actions: write
+      contents: read
+      pages: write
+      id-token: write
+    concurrency:
+      group: pages
+      cancel-in-progress: true
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v6
+ 
+      - name: Setup Node
+        uses: actions/setup-node@v6
+        with:
+          node-version: 20
+ 
+      - name: Restore Node Modules Cache
+        id: cache-node-modules
+        uses: actions/cache@v5
+        with:
+          path: node_modules
+          key: modules-${{ hashFiles('package-lock.json') }}
+ 
+      - name: Install Dependencies
+        if: steps.cache-node-modules.outputs.cache-hit != 'true'
+        run: npm ci
+ 
+      # Playwright HTML Report
+      - name: Download Playwright HTML Report
+        uses: actions/download-artifact@v4
+        with:
+          name: playwright-report-regression-${{ github.run_id }}
+          path: reports/playwright-report
+        continue-on-error: true
+ 
+      # Monocart Report
+      - name: Download Monocart Report
+        uses: actions/download-artifact@v4
+        with:
+          name: monocart-report-regression-${{ github.run_id }}
+          path: reports/monocart-report
+        continue-on-error: true
+ 
+      # Allure Report
+      - name: Download Allure Results
+        uses: actions/download-artifact@v4
+        with:
+          name: allure-results-regression-${{ github.run_id }}
+          path: reports/allure-results
+        continue-on-error: true
+ 
+      - name: Generate Allure Report
+        run: npx allure generate reports/allure-results -o reports/allure-report
+        continue-on-error: true
+ 
+      # Index Page
+      - name: Inject Run Metadata into Index Page
+        run: |
+          RUN_DATE=$(date -u '+%Y-%m-%d %H:%M UTC')
+          RUN_URL="https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+          sed -i "s|params.get('date') || new Date().toUTCString()|'${RUN_DATE}'|g" reports/index.html
+          sed -i "s|params.get('run')  || '#'|'${RUN_URL}'|g" reports/index.html
+ 
+      # Deploy
+      - name: Setup Pages
+        uses: actions/configure-pages@v5
+ 
+      - name: Upload Pages Artifact
+        uses: actions/upload-pages-artifact@v4
+        with:
+          path: reports/
+ 
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
+ 
+      # Cleanup
+      - name: Delete Unnecessary Artifacts
+        uses: geekyeggo/delete-artifact@v5
+        if: always()
+        with:
+          name: |
+            playwright-report-regression-${{ github.run_id }}
+            monocart-report-regression-${{ github.run_id }}
+            allure-results-regression-${{ github.run_id }}
+          failOnError: false
