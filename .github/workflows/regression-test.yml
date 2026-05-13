@@ -101,6 +101,17 @@ jobs:
       - name: Deploy to GitHub Pages
         id: deployment
         uses: actions/deploy-pages@v4
+      
+      - name: Print Report URL
+        run: |
+          echo "## 🎭 Test Reports Published" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "| Report | URL |" >> $GITHUB_STEP_SUMMARY
+          echo "|--------|-----|" >> $GITHUB_STEP_SUMMARY
+          echo "| 🏠 Index | ${{ steps.deployment.outputs.page_url }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| 📊 Playwright | ${{ steps.deployment.outputs.page_url }}playwright-report/ |" >> $GITHUB_STEP_SUMMARY
+          echo "| 📈 Monocart | ${{ steps.deployment.outputs.page_url }}monocart-report/ |" >> $GITHUB_STEP_SUMMARY
+          echo "| 🔍 Allure | ${{ steps.deployment.outputs.page_url }}allure-report/ |" >> $GITHUB_STEP_SUMMARY
  
       # Cleanup
       - name: Delete Unnecessary Artifacts
