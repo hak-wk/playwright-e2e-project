@@ -164,9 +164,8 @@
 
     <script>
         // Injected at deploy time by GitHub Actions
-        const params = new URLSearchParams(window.location.search);
-        const runDate = params.get('date') || new Date().toUTCString();
-        const runUrl = params.get('run') || '#';
+        const runDate = 'PLACEHOLDER_RUN_DATE';
+        const runUrl = 'PLACEHOLDER_RUN_URL';
 
         document.getElementById('run-date').textContent = runDate;
         document.getElementById('run-link').href = runUrl;
